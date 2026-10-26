@@ -31,6 +31,10 @@ public final class GtkBackend {
 
     var borderedButtonPadding: SIMD2<Int>?
 
+    /// The outline of the menu bar last set, to set a new one only when its
+    /// items change.
+    var menuBarOutline: [MenuOutline]?
+
     // A separate initializer to satisfy `BackendFeatures.Core`'s requirements.
     public convenience init() {
         self.init(appIdentifier: nil)
