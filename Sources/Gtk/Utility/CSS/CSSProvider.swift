@@ -3,7 +3,8 @@ import CGtk
 /// Swift representation of a Gtk CSS provider
 public class CSSProvider {
     var pointer: UnsafeMutablePointer<GtkCssProvider>
-    var display: OpaquePointer
+    var display: OpaquePointer?
+    var context: UnsafeMutablePointer<GtkStyleContext>?
     /// The CSS last loaded, to skip loading the same CSS again.
     private var loadedCss: String?
 
@@ -16,8 +17,29 @@ public class CSSProvider {
         gtk_style_context_add_provider_for_display(display, OpaquePointer(pointer), priority)
     }
 
+    /// A provider for one widget alone, on its own style context: loading it
+    /// restyles that widget, not the display. Its selectors only match the
+    /// widget's own CSS node, not its children's.
+    ///
+    /// Deprecated since: 4.10 (GtkStyleContext)
+    public init(
+        forWidget widget: UnsafeMutablePointer<GtkWidget>,
+        priority: UInt32 = UInt32(GTK_STYLE_PROVIDER_PRIORITY_APPLICATION)
+    ) {
+        pointer = gtk_css_provider_new()
+        let context = gtk_widget_get_style_context(widget)!
+        g_object_ref(context)
+        self.context = context
+        gtk_style_context_add_provider(context, OpaquePointer(pointer), priority)
+    }
+
     deinit {
-        gtk_style_context_remove_provider_for_display(display, OpaquePointer(pointer))
+        if let context {
+            gtk_style_context_remove_provider(context, OpaquePointer(pointer))
+            g_object_unref(context)
+        } else if let display {
+            gtk_style_context_remove_provider_for_display(display, OpaquePointer(pointer))
+        }
     }
 
     /// Loads data into css_provider.

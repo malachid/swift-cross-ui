@@ -35,7 +35,7 @@ open class Widget: GObject {
     public lazy var css: CSSBlock = CSSBlock(forClass: customCSSClass) {
         didSet {
             guard oldValue != css else { return }
-            cssProvider.loadCss(from: css.stringRepresentation)
+            blockProvider.loadCss(from: css.stringRepresentation)
         }
     }
 
@@ -49,9 +49,15 @@ open class Widget: GObject {
         return className
     }()
 
-    /// A CSS provider specifically for this widget. Will get removed when
-    /// it deinits.
+    /// A CSS provider specifically for this widget, for CSS whose selectors
+    /// reach past the widget, such as to its children. It applies to the
+    /// whole display, so each load restyles every widget. Will get removed
+    /// when it deinits.
     public lazy var cssProvider = CSSProvider()
+
+    /// The provider of ``css``, on this widget's own style context, so that
+    /// a change restyles this widget alone.
+    private lazy var blockProvider = CSSProvider(forWidget: widgetPointer)
 
     public func show() {
         gtk_widget_set_visible(widgetPointer, true.toGBoolean())
