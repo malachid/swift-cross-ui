@@ -3,6 +3,11 @@ import CGtk
 @_spi(Backends) import SwiftCrossUI
 
 final class GtkCustomButton: Gtk.Button {
+    /// The provider of every custom button's CSS. Its rules match all custom
+    /// buttons, so they share one: a provider each, for the whole display,
+    /// restyled every widget of every window as each button appeared.
+    @MainActor private static let sharedCSSProvider = CSSProvider()
+
     var buttonStyle: ButtonStyle.Kind = .bordered {
         willSet {
             buttonStyle.removeClass(from: self)
@@ -21,7 +26,7 @@ final class GtkCustomButton: Gtk.Button {
     @MainActor
     func loadCSS(environment: EnvironmentValues) {
         let backgroundColor = GtkBackend.controlBackgroundColor(for: environment)
-        cssProvider.loadCss(from: """
+        Self.sharedCSSProvider.loadCss(from: """
                 button.customButton {
                     min-width: 0px;
                     min-height: 0px;
