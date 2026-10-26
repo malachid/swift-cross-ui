@@ -7,8 +7,16 @@ extension GtkBackend: BackendFeatures.ApplicationMenus {
         _ submenus: [ResolvedMenu.Submenu],
         environment: EnvironmentValues
     ) {
+        // Rendering makes the menus' actions afresh, with the current closures
+        // and enabled states, and names them by position. So when the items are
+        // the same, the menu bar that's shown already names the new actions, and
+        // stays: setting a menu bar closes any of its menus that are open.
         let model = renderMenuBar(submenus, environment: environment)
-        gtkApp.menuBarModel = model
+        let outline = submenus.map(MenuOutline.init)
+        if outline != menuBarOutline {
+            gtkApp.menuBarModel = model
+            menuBarOutline = outline
+        }
 
         let showMenuBar = !submenus.isEmpty
         for window in windows {
@@ -42,6 +50,9 @@ extension GtkBackend: BackendFeatures.ApplicationMenus {
                             let gAction = GSimpleAction(name: actionName, action: action)
                             gAction.enabled = environment.isEnabled
                             actionMap.addAction(gAction)
+                        } else {
+                            // An action of an earlier render may have this name.
+                            actionMap.removeAction(named: actionName)
                         }
 
                         currentSection.appendItem(
@@ -115,5 +126,34 @@ extension GtkBackend: BackendFeatures.ApplicationMenus {
         }
 
         return model
+    }
+}
+
+/// What a menu bar shows of its menus: their items' kinds and labels. Menus
+/// with the same outline render the same `GMenu`; what else differs between
+/// them is in their actions.
+enum MenuOutline: Equatable {
+    case button(String)
+    case toggle(String)
+    case separator
+    case submenu(String, [MenuOutline])
+
+    init(_ submenu: ResolvedMenu.Submenu) {
+        self = .submenu(submenu.label, submenu.content.items.map(MenuOutline.init))
+    }
+
+    init(_ item: ResolvedMenu.Item) {
+        switch item {
+            case .button(let label, _):
+                self = .button(label)
+            case .toggle(let label, _, _):
+                self = .toggle(label)
+            case .separator:
+                self = .separator
+            case .submenu(let submenu):
+                self.init(submenu)
+            case .modifiedEnvironment(let item, _):
+                self.init(item)
+        }
     }
 }
